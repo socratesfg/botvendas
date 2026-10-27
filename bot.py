@@ -11,7 +11,7 @@ import gateway as gw
 TELEGRAM_TOKEN = "8750562442:AAHFHt4DF9ILmkOEa5HFbrpoEJcLFGtHw-A"
 
 # ID do seu Canal VIP privado (substitua pelo ID real, ex: -1001234567890)
-ID_CANAL_VIP = "-4496491614"
+ID_CANAL_VIP = "-1004496491614"
 
 # SEU ID PESSOAL DO TELEGRAM (Substitua pelos números fornecidos pelo @userinfobot)
 SEU_TELEGRAM_ID = 5178272021
