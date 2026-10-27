@@ -10,13 +10,13 @@ import gateway as gw
 TELEGRAM_TOKEN = "8750562442:AAHFHt4DF9ILmkOEa5HFbrpoEJcLFGtHw-A"
 
 # ID do seu Canal VIP privado
-ID_CANAL_VIP = "-4496491614"
+ID_CANAL_VIP = "-1004496491614"
 
 # O USERNAME DO SEU BOT (Sem o @)
 USERNAME_DO_BOT = "santosleticia_bot"
 
 # SEU ID PESSOAL DO TELEGRAM (Para usar o comando /publicar)
-SEU_TELEGRAM_ID = 123456789  # <--- Coloque o seu ID numérico aqui
+SEU_TELEGRAM_ID = 5178272021  # <--- Coloque o seu ID numérico aqui
 
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
