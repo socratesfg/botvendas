@@ -78,41 +78,53 @@ async def cmd_start(message: Message):
         await message.answer(legenda_boas_vindas, reply_markup=teclado, parse_mode="HTML")
 
 # --- COMANDO EXCLUSIVO DO ADMINISTRADOR (SOMENTE VOCÊ PODE USAR) ---
+# --- COMANDO EXCLUSIVO DO ADMINISTRADOR (SOMENTE VOCÊ PODE USAR) ---
 @dp.message(Command("publicar"))
 async def cmd_publicar_no_canal(message: Message):
-    """Envia o conteúdo diretamente para o Canal VIP com o botão de vídeo chamada flutuante"""
+    """Publica qualquer foto ou vídeo enviado por você diretamente no Canal VIP com o botão flutuante"""
     
-    # Trava de segurança: ignora completamente se não for você enviando o comando
+    # Trava de segurança: apenas você pode publicar
     if message.from_user.id != SEU_TELEGRAM_ID:
         return
 
-    caminho_video = "video1.mp4"
-    
     # Botão com o callback exclusivo para abrir o Pix flutuante
     teclado_canal = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎥 Faça uma vídeo chamada comigo", callback_data="chamada_vip_pix")]
     ])
-    
-    legenda = (
-        "🔥 <b>Conteúdo exclusivo liberado no canal!</b>\n\n"
-        "Quer conversar comigo em uma vídeo chamada privada? "
-        "Clique no botão abaixo para gerar o Pix e agendar!"
-    )
+
+    # Verifica se o comando /publicar veio acompanhado de uma foto/vídeo respondido ou com mídia
+    midia_reply = message.reply_to_message
 
     try:
-        if os.path.exists(caminho_video):
-            video_file = FSInputFile(caminho_video)
+        if midia_reply and midia_reply.video:
+            # Se você respondeu a um vídeo com /publicar
+            caption = midia_reply.caption or "🔥 <b>Novo conteúdo exclusivo no canal!</b>"
             await bot.send_video(
                 chat_id=ID_CANAL_VIP,
-                video=video_file,
-                caption=legenda,
-                has_spoiler=True,
+                video=midia_reply.video.file_id,
+                caption=caption,
                 reply_markup=teclado_canal,
                 parse_mode="HTML"
             )
-            await message.answer("✅ Publicação enviada para o canal VIP com sucesso!")
+            await message.answer("✅ Vídeo publicado no Canal VIP com sucesso!")
+
+        elif midia_reply and midia_reply.photo:
+            # Se você respondeu a uma foto com /publicar
+            caption = midia_reply.caption or "🔥 <b>Novo conteúdo exclusivo no canal!</b>"
+            await bot.send_photo(
+                chat_id=ID_CANAL_VIP,
+                photo=midia_reply.photo[-1].file_id,
+                caption=caption,
+                reply_markup=teclado_canal,
+                parse_mode="HTML"
+            )
+            await message.answer("✅ Foto publicada no Canal VIP com sucesso!")
+
         else:
-            await message.answer(f"⚠️ O ficheiro '{caminho_video}' não foi encontrado na pasta do bot.")
+            await message.answer(
+                "⚠️ <b>Como usar:</b> Envie a foto ou o vídeo para o bot e, em seguida, <b>responda a essa mídia</b> digitando o comando <code>/publicar</code>!"
+            )
+
     except Exception as e:
         await message.answer(f"❌ Erro ao enviar para o canal: {e}")
 
