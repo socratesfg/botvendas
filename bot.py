@@ -3,18 +3,20 @@ import base64
 import os
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile, FSInputFile
-from aiogram.filters import Command
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import Command, CommandObject
 import gateway as gw
 
 # Insira o Token do seu bot do Telegram aqui
 TELEGRAM_TOKEN = "8750562442:AAHFHt4DF9ILmkOEa5HFbrpoEJcLFGtHw-A"
 
-# ID do seu Canal VIP privado (substitua pelo ID real, ex: -1001234567890)
-ID_CANAL_VIP = "-1004496491614"
+# ID do seu Canal VIP privado
+ID_CANAL_VIP = "-4496491614"
 
-# SEU ID PESSOAL DO TELEGRAM (Substitua pelos números fornecidos pelo @userinfobot)
-SEU_TELEGRAM_ID = 5178272021
+# O USERNAME DO SEU BOT (Sem o @)
+USERNAME_DO_BOT = "santosleticia_bot"
+
+# SEU ID PESSOAL DO TELEGRAM (Para usar o comando /publicar)
+SEU_TELEGRAM_ID = 123456789  # <--- Coloque o seu ID numérico aqui
 
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
@@ -44,12 +46,27 @@ PLANOS = {
 }
 
 @dp.message(Command("start"))
-async def cmd_start(message: Message):
-    """Envia uma única mensagem contendo o vídeo com spoiler, o texto de boas-vindas e os botões dos planos"""
+async def cmd_start(message: Message, command: CommandObject):
+    """Gerencia o /start normal e também quando o usuário vem do botão do canal para a vídeo chamada"""
     
+    # Se o usuário veio pelo link do canal para a vídeo chamada (?start=videochamada)
+    if command.args == "videochamada":
+        teclado_video = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💎 Gerar Pix - R$ 80,00", callback_data="comprar_plano_videochamada")]
+        ])
+        
+        await message.answer(
+            "<b>🎥 Vídeo Chamada Privada Comigo!</b>\n\n"
+            "Duração de 1 hora de conversa exclusiva e sem censura. "
+            "Para garantir o seu horário, clique no botão abaixo para gerar o Pix correspondente:",
+            reply_markup=teclado_video,
+            parse_mode="HTML"
+        )
+        return
+
+    # Fluxo normal do /start (Envia o vídeo de boas-vindas e os planos gerais)
     caminho_video = "video1.mp4"
     
-    # Cria os botões de seleção de planos do menu principal
     teclado = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⏳ 15 Dias - R$ 18,90", callback_data="comprar_plano_15dias")],
         [InlineKeyboardButton(text="📅 Mensal - R$ 29,90", callback_data="comprar_plano_mensal")],
@@ -57,7 +74,6 @@ async def cmd_start(message: Message):
         [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")]
     ])
     
-    # Texto unificado de boas-vindas e chamada para ação
     legenda_boas_vindas = (
         "😈 <b> Veio conferir de perto, amor?</b>\n\n"
         "<i>Se você deseja me ver pelada e fazendo tudo o que você tem vontade, o meu grupo VIP é o único lugar onde posto todo tipo de conteúdo que voce imaginar.</i>\n\n"
@@ -74,31 +90,28 @@ async def cmd_start(message: Message):
             parse_mode="HTML"
         )
     else:
-        print(f"Aviso: O ficheiro '{caminho_video}' não foi encontrado. A enviar apenas texto.")
         await message.answer(legenda_boas_vindas, reply_markup=teclado, parse_mode="HTML")
 
-# --- COMANDO EXCLUSIVO DO ADMINISTRADOR (SOMENTE VOCÊ PODE USAR) ---
-# --- COMANDO EXCLUSIVO DO ADMINISTRADOR (SOMENTE VOCÊ PODE USAR) ---
+# --- COMANDO EXCLUSIVO DO ADMINISTRADOR PARA PUBLICAR NO CANAL ---
 @dp.message(Command("publicar"))
 async def cmd_publicar_no_canal(message: Message):
-    """Publica qualquer foto ou vídeo enviado por você diretamente no Canal VIP com o botão flutuante"""
+    """Publica qualquer foto ou vídeo com legenda opcional e o botão que redireciona para o bot"""
     
-    # Trava de segurança: apenas você pode publicar
     if message.from_user.id != SEU_TELEGRAM_ID:
         return
 
-    # Botão com o callback exclusivo para abrir o Pix flutuante
     teclado_canal = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎥 Faça uma vídeo chamada comigo", callback_data="chamada_vip_pix")]
+        [InlineKeyboardButton(
+            text="🎥 Faça uma vídeo chamada comigo", 
+            url=f"https://t.me/{USERNAME_DO_BOT}?start=videochamada"
+        )]
     ])
 
-    # Verifica se o comando /publicar veio acompanhado de uma foto/vídeo respondido ou com mídia
     midia_reply = message.reply_to_message
 
     try:
         if midia_reply and midia_reply.video:
-            # Se você respondeu a um vídeo com /publicar
-            caption = midia_reply.caption or "🔥 <b>Novo conteúdo exclusivo no canal!</b>"
+            caption = midia_reply.caption or None
             await bot.send_video(
                 chat_id=ID_CANAL_VIP,
                 video=midia_reply.video.file_id,
@@ -106,11 +119,10 @@ async def cmd_publicar_no_canal(message: Message):
                 reply_markup=teclado_canal,
                 parse_mode="HTML"
             )
-            await message.answer("✅ Vídeo publicado no Canal VIP com sucesso!")
+            await message.answer("✅ Vídeo publicado com sucesso!")
 
         elif midia_reply and midia_reply.photo:
-            # Se você respondeu a uma foto com /publicar
-            caption = midia_reply.caption or "🔥 <b>Novo conteúdo exclusivo no canal!</b>"
+            caption = midia_reply.caption or None
             await bot.send_photo(
                 chat_id=ID_CANAL_VIP,
                 photo=midia_reply.photo[-1].file_id,
@@ -118,52 +130,19 @@ async def cmd_publicar_no_canal(message: Message):
                 reply_markup=teclado_canal,
                 parse_mode="HTML"
             )
-            await message.answer("✅ Foto publicada no Canal VIP com sucesso!")
+            await message.answer("✅ Foto publicada com sucesso!")
 
         else:
             await message.answer(
-                "⚠️ <b>Como usar:</b> Envie a foto ou o vídeo para o bot e, em seguida, <b>responda a essa mídia</b> digitando o comando <code>/publicar</code>!"
+                "⚠️ <b>Como usar:</b> Envie a foto ou vídeo para o bot e <b>responda a essa mídia</b> com o comando <code>/publicar</code>!"
             )
 
     except Exception as e:
         await message.answer(f"❌ Erro ao enviar para o canal: {e}")
 
-# --- POP-UP FLUTUANTE EXCLUSIVO PARA O CANAL VIP ---
-@dp.callback_query(F.data == "chamada_vip_pix")
-async def processar_call_flutuante(callback: CallbackQuery):
-    """Gera o Pix e exibe diretamente em um pop-up flutuante no ecrã para membros do VIP"""
-    user_id = callback.from_user.id
-    
-    try:
-        # Checa se quem clicou é realmente membro do canal VIP
-        membro = await bot.get_chat_member(chat_id=ID_CANAL_VIP, user_id=user_id)
-        
-        if membro.status in ['creator', 'administrator', 'member']:
-            plano = PLANOS["plano_videochamada"]
-            
-            # Gera a cobrança no gateway
-            cobranca = await gw.gerar_pix_cobranca(plano["preco"], plano["descricao"])
-            
-            if cobranca.get("success"):
-                pix_code = cobranca.get("pix_copia_cola")
-                # Exibe a janela flutuante (Pop-up) com o Pix
-                await callback.answer(
-                    text=f"🎥 PIX VIDEOCHAMADA (R$ 80,00)\n\nCopie o código abaixo:\n\n{pix_code}",
-                    show_alert=True
-                )
-            else:
-                await callback.answer(text="❌ Erro ao gerar o Pix. Tente novamente em instantes.", show_alert=True)
-        else:
-            # Não é membro VIP
-            await callback.answer(text="🔒 Apenas membros do Grupo VIP podem agendar vídeo chamada!", show_alert=True)
-            
-    except TelegramBadRequest:
-        await callback.answer(text="⚠️ Ocorreu um erro ao verificar sua assinatura.", show_alert=True)
-
-
 @dp.callback_query(F.data.startswith("comprar_"))
 async def processar_callbacks(callback: CallbackQuery):
-    """Processa a seleção dos planos padrão do /start (MANTIDO IGUAL)"""
+    """Processa a seleção de qualquer plano (incluindo o clique para gerar o Pix da vídeo chamada)"""
     dados = callback.data
     plano_id = dados.replace("comprar_", "")
     
@@ -174,7 +153,6 @@ async def processar_callbacks(callback: CallbackQuery):
         
         await callback.message.answer(f"⏳ A gerar o Pix para: <b>{plano['nome']}</b> (R$ {valor:.2f})... Por favor, aguarde.", parse_mode="HTML")
         
-        # Chama a função de geração de Pix no gateway.py
         cobranca = await gw.gerar_pix_cobranca(valor, descricao)
         
         if cobranca.get("success"):
