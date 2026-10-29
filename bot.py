@@ -83,7 +83,7 @@ async def cmd_start(message: Message, command: CommandObject):
         await message.answer(
             "<b>🎥 Vídeo Chamada Privada Comigo!</b>\n\n"
             "Duração de 1 hora de conversa exclusiva e sem censura. "
-            "Para garantir o seu horário, clique no botão abaixo para gerar o Pix correspondente:",
+            "Para garantir o seu horário, clique no botão abaixo:",
             reply_markup=teclado_video,
             parse_mode="HTML"
         )
@@ -126,7 +126,7 @@ async def cmd_publicar_no_canal(message: Message):
 
     teclado_canal = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="🎥 Faça uma vídeo chamada comigo", 
+            text="🎥 Vem call video comigo, amor", 
             url=f"https://t.me/{USERNAME_DO_BOT}?start=videochamada"
         )]
     ])
@@ -194,7 +194,7 @@ async def processar_callbacks(callback: CallbackQuery):
                 text=(
                     f"🔔 <b>Novo interesse / Geração de Pix!</b>\n\n"
                     f"👤 <b>Nome:</b> {user.first_name}\n"
-                    f"🔗 <b>Username:</b> @{user.username or 'N/A'}\n"
+                    f"🔗 <b>Username:</b> @{user.username or 'sem nome'}\n"
                     f"🆔 <b>ID:</b> <code>{user.id}</code>\n"
                     f"📦 <b>Plano:</b> {plano['nome']} (R$ {valor:.2f})"
                 ),
@@ -249,7 +249,7 @@ async def aprovar_cliente(callback: CallbackQuery):
     
     try:
         # Substitua pelo link de convite real do seu NOVO canal VIP
-        link_canal_novo = "https://t.me/+SEU_LINK_DE_CONVITE_AQUI"
+        link_canal_novo = "https://t.me/+PszczlpS5V82NmYx"
         
         await bot.send_message(
             chat_id=user_id_alvo,
