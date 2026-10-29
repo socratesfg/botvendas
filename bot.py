@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import os
+import sqlite3
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile, FSInputFile
 from aiogram.filters import Command, CommandObject
@@ -15,19 +16,43 @@ ID_CANAL_VIP = "-1004496491614"
 # O USERNAME DO SEU BOT (Sem o @)
 USERNAME_DO_BOT = "santosleticia_bot"
 
-# SEU ID PESSOAL DO TELEGRAM (Para usar o comando /publicar)
-SEU_TELEGRAM_ID = 5178272021  # <--- Coloque o seu ID numérico aqui
+# SEU ID PESSOAL DO TELEGRAM (Para usar o comando /publicar e receber os avisos)
+SEU_TELEGRAM_ID = 5178272021
 
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
+# --- BANCO DE DADOS LOCAL PARA REGISTAR CLIENTES ---
+def inicializar_banco():
+    conn = sqlite3.connect("clientes.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS clientes (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            nome TEXT,
+            plano TEXT,
+            status TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+inicializar_banco()
+
+def salvar_cliente_db(user_id, username, nome, plano):
+    conn = sqlite3.connect("clientes.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO clientes (user_id, username, nome, plano, status)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, username, nome, plano, "pendente"))
+    conn.commit()
+    conn.close()
+
 # Planos e preços configurados
 PLANOS = {
-    "plano_15dias": {
-        "nome": "15 Dias de Acesso",
-        "preco": 18.90,
-        "descricao": "Acesso VIP por 15 dias"
-    },
+
     "plano_mensal": {
         "nome": "Acesso Mensal",
         "preco": 29.90,
@@ -68,7 +93,6 @@ async def cmd_start(message: Message, command: CommandObject):
     caminho_video = "video1.mp4"
     
     teclado = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⏳ 15 Dias - R$ 18,90", callback_data="comprar_plano_15dias")],
         [InlineKeyboardButton(text="📅 Mensal - R$ 29,90", callback_data="comprar_plano_mensal")],
         [InlineKeyboardButton(text="♾️ Vitalício - R$ 43,60", callback_data="comprar_plano_vitalicio")],
         [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")]
@@ -142,7 +166,7 @@ async def cmd_publicar_no_canal(message: Message):
 
 @dp.callback_query(F.data.startswith("comprar_"))
 async def processar_callbacks(callback: CallbackQuery):
-    """Processa a seleção de qualquer plano (incluindo o clique para gerar o Pix da vídeo chamada)"""
+    """Processa a seleção de qualquer plano, guarda o cliente e gera o Pix"""
     dados = callback.data
     plano_id = dados.replace("comprar_", "")
     
@@ -150,6 +174,35 @@ async def processar_callbacks(callback: CallbackQuery):
         plano = PLANOS[plano_id]
         valor = plano["preco"]
         descricao = plano["descricao"]
+        user = callback.from_user
+        
+        # Guarda o cliente no banco local como pendente
+        salvar_cliente_db(
+            user_id=user.id,
+            username=user.username or "Sem username",
+            nome=user.first_name,
+            plano=plano['nome']
+        )
+        
+        # Envia a notificação para o seu chat privado com o botão de aprovação
+        try:
+            teclado_admin = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Aprovar / Enviar Link do VIP", callback_data=f"aprovar_{user.id}")]
+            ])
+            await bot.send_message(
+                chat_id=SEU_TELEGRAM_ID,
+                text=(
+                    f"🔔 <b>Novo interesse / Geração de Pix!</b>\n\n"
+                    f"👤 <b>Nome:</b> {user.first_name}\n"
+                    f"🔗 <b>Username:</b> @{user.username or 'N/A'}\n"
+                    f"🆔 <b>ID:</b> <code>{user.id}</code>\n"
+                    f"📦 <b>Plano:</b> {plano['nome']} (R$ {valor:.2f})"
+                ),
+                reply_markup=teclado_admin,
+                parse_mode="HTML"
+            )
+        except Exception as err:
+            print(f"Erro ao notificar admin: {err}")
         
         await callback.message.answer(f"⏳ A gerar o Pix para: <b>{plano['nome']}</b> (R$ {valor:.2f})... Por favor, aguarde.", parse_mode="HTML")
         
@@ -177,12 +230,40 @@ async def processar_callbacks(callback: CallbackQuery):
             
             await callback.message.answer(
                 f"📋 <b>Pix Copia e Cola:</b>\n\n"
-                f"<code>{pix_copia_cola}</code>",
+                f"<code>{pix_copia_cola}</code>\n\n"
+                f"<i>Após o pagamento, envie o comprovante ou aguarde a liberação!</i>",
                 parse_mode="HTML"
             )
         else:
             await callback.message.answer("❌ Ocorreu um erro ao comunicar com o gateway de pagamento. Tente novamente mais tarde.")
             
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("aprovar_"))
+async def aprovar_cliente(callback: CallbackQuery):
+    """Permite que você aprove o cliente direto pelo seu chat privado e envie o link do canal novo"""
+    if callback.from_user.id != SEU_TELEGRAM_ID:
+        return
+        
+    user_id_alvo = int(callback.data.replace("aprovar_", ""))
+    
+    try:
+        # Substitua pelo link de convite real do seu NOVO canal VIP
+        link_canal_novo = "https://t.me/+SEU_LINK_DE_CONVITE_AQUI"
+        
+        await bot.send_message(
+            chat_id=user_id_alvo,
+            text=(
+                f"🎉 <b>Pagamento confirmado / Acesso Liberado!</b>\n\n"
+                f"Muito obrigado pela confiança, amor! Aqui está o link de acesso exclusivo para o nosso novo canal VIP:\n\n"
+                f"{link_canal_novo}"
+            ),
+            parse_mode="HTML"
+        )
+        await callback.message.edit_text(f"{callback.message.text}\n\n✅ <b>STATUS: Aprovado e link enviado!</b>", parse_mode="HTML")
+    except Exception as e:
+        await callback.answer(f"Erro ao enviar link: {e}", show_alert=True)
+        
     await callback.answer()
 
 async def main():
