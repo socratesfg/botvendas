@@ -8,7 +8,7 @@ from aiogram.filters import Command, CommandObject
 import gateway as gw
 
 # Insira o Token do seu bot do Telegram aqui
-TELEGRAM_TOKEN = "8750562442:AAHFHt4DF9ILmkOEa5HFbrpoEJcLFGtHw-A"
+TELEGRAM_TOKEN = "8750562442:AAGGaAA9Q8yHh3AsPf0JrPQLUNGq7ez2zo8"
 
 # ID do seu Canal VIP privado
 ID_CANAL_VIP = "-1004496491614"
@@ -52,7 +52,11 @@ def salvar_cliente_db(user_id, username, nome, plano):
 
 # Planos e preços configurados
 PLANOS = {
-
+    "plano_15dias": {
+        "nome": "15 Dias de Acesso",
+        "preco": 18.90,
+        "descricao": "Acesso VIP por 15 dias"
+    },
     "plano_mensal": {
         "nome": "Acesso Mensal",
         "preco": 29.90,
@@ -74,7 +78,6 @@ PLANOS = {
 async def cmd_start(message: Message, command: CommandObject):
     """Gerencia o /start normal e também quando o usuário vem do botão do canal para a vídeo chamada"""
     
-    # Se o usuário veio pelo link do canal para a vídeo chamada (?start=videochamada)
     if command.args == "videochamada":
         teclado_video = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💎 Gerar Pix - R$ 80,00", callback_data="comprar_plano_videochamada")]
@@ -83,16 +86,16 @@ async def cmd_start(message: Message, command: CommandObject):
         await message.answer(
             "<b>🎥 Vídeo Chamada Privada Comigo!</b>\n\n"
             "Duração de 1 hora de conversa exclusiva e sem censura. "
-            "Para garantir o seu horário, clique no botão abaixo:",
+            "Para garantir o seu horário, clique no botão abaixo para gerar o Pix correspondente:",
             reply_markup=teclado_video,
             parse_mode="HTML"
         )
         return
 
-    # Fluxo normal do /start (Envia o vídeo de boas-vindas e os planos gerais)
     caminho_video = "video1.mp4"
     
     teclado = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏳ 15 Dias - R$ 18,90", callback_data="comprar_plano_15dias")],
         [InlineKeyboardButton(text="📅 Mensal - R$ 29,90", callback_data="comprar_plano_mensal")],
         [InlineKeyboardButton(text="♾️ Vitalício - R$ 43,60", callback_data="comprar_plano_vitalicio")],
         [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")]
@@ -116,7 +119,6 @@ async def cmd_start(message: Message, command: CommandObject):
     else:
         await message.answer(legenda_boas_vindas, reply_markup=teclado, parse_mode="HTML")
 
-# --- COMANDO EXCLUSIVO DO ADMINISTRADOR PARA PUBLICAR NO CANAL ---
 @dp.message(Command("publicar"))
 async def cmd_publicar_no_canal(message: Message):
     """Publica qualquer foto ou vídeo com legenda opcional e o botão que redireciona para o bot"""
@@ -126,7 +128,7 @@ async def cmd_publicar_no_canal(message: Message):
 
     teclado_canal = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="🎥 Vem call video comigo, amor", 
+            text="🎥 Faça uma vídeo chamada comigo", 
             url=f"https://t.me/{USERNAME_DO_BOT}?start=videochamada"
         )]
     ])
@@ -176,7 +178,6 @@ async def processar_callbacks(callback: CallbackQuery):
         descricao = plano["descricao"]
         user = callback.from_user
         
-        # Guarda o cliente no banco local como pendente
         salvar_cliente_db(
             user_id=user.id,
             username=user.username or "Sem username",
@@ -184,17 +185,16 @@ async def processar_callbacks(callback: CallbackQuery):
             plano=plano['nome']
         )
         
-        # Envia a notificação para o seu chat privado com o botão de aprovação
         try:
             teclado_admin = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="✅ Aprovar / Enviar Link do VIP", callback_data=f"aprovar_{user.id}")]
+                [InlineKeyboardButton(text="✅ Aprovar / Gerar Link Único", callback_data=f"aprovar_{user.id}")]
             ])
             await bot.send_message(
                 chat_id=SEU_TELEGRAM_ID,
                 text=(
                     f"🔔 <b>Novo interesse / Geração de Pix!</b>\n\n"
                     f"👤 <b>Nome:</b> {user.first_name}\n"
-                    f"🔗 <b>Username:</b> @{user.username or 'sem nome'}\n"
+                    f"🔗 <b>Username:</b> @{user.username or 'N/A'}\n"
                     f"🆔 <b>ID:</b> <code>{user.id}</code>\n"
                     f"📦 <b>Plano:</b> {plano['nome']} (R$ {valor:.2f})"
                 ),
@@ -241,28 +241,33 @@ async def processar_callbacks(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("aprovar_"))
 async def aprovar_cliente(callback: CallbackQuery):
-    """Permite que você aprove o cliente direto pelo seu chat privado e envie o link do canal novo"""
+    """Gera um link de convite de uso único automaticamente e envia para o cliente aprovado"""
     if callback.from_user.id != SEU_TELEGRAM_ID:
         return
         
     user_id_alvo = int(callback.data.replace("aprovar_", ""))
     
     try:
-        # Substitua pelo link de convite real do seu NOVO canal VIP
-        link_canal_novo = "https://t.me/+PszczlpS5V82NmYx"
+        # Cria o link exclusivo que expira após o primeiro uso
+        link_unico = await bot.create_chat_invite_link(
+            chat_id=ID_CANAL_VIP,
+            member_limit=1
+        )
         
         await bot.send_message(
             chat_id=user_id_alvo,
             text=(
                 f"🎉 <b>Pagamento confirmado / Acesso Liberado!</b>\n\n"
-                f"Muito obrigado pela confiança, amor! Aqui está o link de acesso exclusivo para o nosso novo canal VIP:\n\n"
-                f"{link_canal_novo}"
+                f"Muito obrigado pela confiança, amor! Aqui está o seu link de acesso exclusivo e de uso único para o nosso canal VIP:\n\n"
+                f"{link_unico.invite_link}\n\n"
+                f"⚠️ <i>Atenção: Este link só pode ser usado uma única vez e expira em seguida. Bom proveito! 😈</i>"
             ),
             parse_mode="HTML"
         )
-        await callback.message.edit_text(f"{callback.message.text}\n\n✅ <b>STATUS: Aprovado e link enviado!</b>", parse_mode="HTML")
+        
+        await callback.message.edit_text(f"{callback.message.text}\n\n✅ <b>STATUS: Aprovado e link único enviado!</b>", parse_mode="HTML")
     except Exception as e:
-        await callback.answer(f"Erro ao enviar link: {e}", show_alert=True)
+        await callback.answer(f"Erro ao gerar link de convite: {e}", show_alert=True)
         
     await callback.answer()
 
