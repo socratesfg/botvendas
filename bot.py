@@ -71,7 +71,12 @@ PLANOS = {
         "nome": "Videochamada Privada",
         "preco": 80.00, 
         "descricao": "1 hora em video chamada comigo!"
-    }
+    },
+    "pack_fotos": {
+        "nome": "Pack de Fotos",
+        "preco": 57.00,
+        "descricao": "Pack de fotos exclusivas"
+    },
 }
 
 @dp.message(Command("start"))
@@ -98,7 +103,8 @@ async def cmd_start(message: Message, command: CommandObject):
         [InlineKeyboardButton(text="⏳ 15 Dias - R$ 18,90", callback_data="comprar_plano_15dias")],
         [InlineKeyboardButton(text="📅 Mensal - R$ 29,90", callback_data="comprar_plano_mensal")],
         [InlineKeyboardButton(text="♾️ Vitalício - R$ 43,60", callback_data="comprar_plano_vitalicio")],
-        [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")]
+        [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")],
+        [InlineKeyboardButton(text="📸 Pack de Fotos - R$ 57,00", callback_data="comprar_pack_fotos")]
     ])
     
     legenda_boas_vindas = (
