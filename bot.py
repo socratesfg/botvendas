@@ -54,87 +54,183 @@ def salvar_cliente_db(user_id, username, nome, plano):
 PLANOS = {
     "plano_15dias": {
         "nome": "15 Dias de Acesso",
-        "preco": 18.90,
+        "preco": 20.90,
         "descricao": "Acesso VIP por 15 dias"
     },
     "plano_mensal": {
         "nome": "Acesso Mensal",
-        "preco": 29.90,
+        "preco": 35.90,
         "descricao": "Acesso VIP Mensal"
     },
     "plano_vitalicio": {
         "nome": "Acesso Vitalício",
-        "preco": 43.60,
+        "preco": 45.00,
         "descricao": "Acesso VIP Vitalício Permanente"
     },
+    "pack_fotos": {
+        "nome": "15 Fotos Exclusivas",
+        "preco": 50.00,
+        "descricao": "Pack com 15 fotos exclusivas"
+    },
+    "pack_videos": {
+        "nome": "10 Vídeos Exclusivos",
+        "preco": 85.00,
+        "descricao": "Pack com 10 vídeos exclusivos"
+    },
+    "pack_fotos_videos": {
+        "nome": "10 Vídeos + 15 Fotos",
+        "preco": 135.00,
+        "descricao": "Combo com 10 vídeos e 15 fotos exclusivas"
+    },
     "plano_videochamada": {
-        "nome": "Videochamada Privada",
-        "preco": 80.00, 
+        "nome": "Videochamada Privada (1 Hora)",
+        "preco": 80.00,
         "descricao": "1 hora em video chamada comigo!"
     },
-    "pack_fotos": {
-        "nome": "Pack de Fotos",
-        "preco": 57.00,
-        "descricao": "Pack de fotos exclusivas"
+    "plano_videochamada_1h": {
+        "nome": "Videochamada Privada (1 Hora)",
+        "preco": 80.00,
+        "descricao": "1 hora em video chamada comigo!"
+    },
+    "plano_videochamada_2h": {
+        "nome": "Videochamada Privada (2 Horas)",
+        "preco": 150.00,
+        "descricao": "2 horas em video chamada comigo!"
+    },
+    "plano_videochamada_3h": {
+        "nome": "Videochamada Privada (3 Horas)",
+        "preco": 200.00,
+        "descricao": "3 horas em video chamada comigo!"
     },
 }
+
+LEGENDA_BOAS_VINDAS = (
+    "😈 <b>Veio conferir de perto, amor?</b>\n\n"
+    "<i>Se você deseja me ver pelada e fazendo tudo o que você tem vontade, o meu grupo VIP é o único lugar onde posto todo tipo de conteúdo que você imaginar.</i>\n\n"
+    "Escolha uma categoria abaixo:"
+)
+
+def teclado_categorias() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💎 GRUPO VIP", callback_data="menu_grupo_vip")],
+        [InlineKeyboardButton(text="🔥 PACKS DE FOTOS E VIDEOS", callback_data="menu_packs")],
+        [InlineKeyboardButton(text="🎥 VIDEOCHAMADA PRIVADA", callback_data="menu_videochamada")],
+    ])
+
+def teclado_grupo_vip() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏳ 15 Dias - R$ 20,90", callback_data="comprar_plano_15dias")],
+        [InlineKeyboardButton(text="📅 Mensal - R$ 35,90", callback_data="comprar_plano_mensal")],
+        [InlineKeyboardButton(text="♾️ Vitalício - R$ 45,00", callback_data="comprar_plano_vitalicio")],
+        [InlineKeyboardButton(text="⬅️ Voltar", callback_data="menu_voltar")]
+    ])
+
+def teclado_packs() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📸 15 FOTOS - R$ 50,00", callback_data="comprar_pack_fotos")],
+        [InlineKeyboardButton(text="🎥 10 VIDEOS - R$ 85,00", callback_data="comprar_pack_videos")],
+        [InlineKeyboardButton(text="🎥 10 VIDEOS + 15 FOTOS - R$ 135,00", callback_data="comprar_pack_fotos_videos")],
+        [InlineKeyboardButton(text="⬅️ Voltar", callback_data="menu_voltar")]
+    ])
+
+def teclado_videochamada() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💎 1 Hora - R$ 80,00", callback_data="comprar_plano_videochamada_1h")],
+        [InlineKeyboardButton(text="💎 2 Horas - R$ 150,00", callback_data="comprar_plano_videochamada_2h")],
+        [InlineKeyboardButton(text="💎 3 Horas - R$ 200,00", callback_data="comprar_plano_videochamada_3h")],
+        [InlineKeyboardButton(text="⬅️ Voltar", callback_data="menu_voltar")]
+    ])
+
+async def atualizar_mensagem_menu(callback: CallbackQuery, texto: str, teclado: InlineKeyboardMarkup):
+    """Edita a legenda se a mensagem tiver vídeo/mídia, ou edita o texto se for mensagem comum"""
+    if callback.message.video or callback.message.photo:
+        await callback.message.edit_caption(
+            caption=texto,
+            reply_markup=teclado,
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.edit_text(
+            text=texto,
+            reply_markup=teclado,
+            parse_mode="HTML"
+        )
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message, command: CommandObject):
     """Gerencia o /start normal e também quando o usuário vem do botão do canal para a vídeo chamada"""
-    
+
     if command.args == "videochamada":
-        teclado_video = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💎 Gerar Pix - R$ 80,00", callback_data="comprar_plano_videochamada")]
-        ])
-        
         await message.answer(
             "<b>🎥 Vídeo Chamada Privada Comigo!</b>\n\n"
-            "Duração de 1 hora de conversa exclusiva e sem censura. "
-            "Para garantir o seu horário, clique no botão abaixo para gerar o Pix correspondente:",
-            reply_markup=teclado_video,
+            "Conversa exclusiva e sem censura. "
+            "Escolha a duração desejada para gerar o Pix:",
+            reply_markup=teclado_videochamada(),
             parse_mode="HTML"
         )
         return
 
     caminho_video = "video1.mp4"
-    
-    teclado = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⏳ 15 Dias - R$ 18,90", callback_data="comprar_plano_15dias")],
-        [InlineKeyboardButton(text="📅 Mensal - R$ 29,90", callback_data="comprar_plano_mensal")],
-        [InlineKeyboardButton(text="♾️ Vitalício - R$ 43,60", callback_data="comprar_plano_vitalicio")],
-        [InlineKeyboardButton(text="🎥 Video Chamada - R$ 80,00", callback_data="comprar_plano_videochamada")],
-        [InlineKeyboardButton(text="📸 Pack de Fotos - R$ 57,00", callback_data="comprar_pack_fotos")]
-    ])
-    
-    legenda_boas_vindas = (
-        "😈 <b> Veio conferir de perto, amor?</b>\n\n"
-        "<i>Se você deseja me ver pelada e fazendo tudo o que você tem vontade, o meu grupo VIP é o único lugar onde posto todo tipo de conteúdo que voce imaginar.</i>\n\n"
-        "Escolhe o teu plano aí embaixo e vem gozar comigo! 💦"
-    )
+    teclado = teclado_categorias()
 
     if os.path.exists(caminho_video):
         video_file = FSInputFile(caminho_video)
         await message.answer_video(
             video=video_file,
-            caption=legenda_boas_vindas,
+            caption=LEGENDA_BOAS_VINDAS,
             has_spoiler=True,
             reply_markup=teclado,
             parse_mode="HTML"
         )
     else:
-        await message.answer(legenda_boas_vindas, reply_markup=teclado, parse_mode="HTML")
+        await message.answer(LEGENDA_BOAS_VINDAS, reply_markup=teclado, parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_grupo_vip")
+async def abrir_menu_vip(callback: CallbackQuery):
+    await atualizar_mensagem_menu(
+        callback,
+        "💎 <b>PLANOS DO GRUPO VIP</b>\n\nEscolha o período de acesso que deseja:",
+        teclado_grupo_vip()
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data == "menu_packs")
+async def abrir_menu_packs(callback: CallbackQuery):
+    await atualizar_mensagem_menu(
+        callback,
+        "🔥 <b>PACKS DE FOTOS E VÍDEOS</b>\n\nEscolha qual pack você quer:",
+        teclado_packs()
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data == "menu_videochamada")
+async def abrir_menu_videochamada(callback: CallbackQuery):
+    await atualizar_mensagem_menu(
+        callback,
+        "🎥 <b>VIDEOCHAMADA PRIVADA</b>\n\nEscolha a duração que você deseja:",
+        teclado_videochamada()
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data == "menu_voltar")
+async def voltar_categorias(callback: CallbackQuery):
+    await atualizar_mensagem_menu(
+        callback,
+        LEGENDA_BOAS_VINDAS,
+        teclado_categorias()
+    )
+    await callback.answer()
 
 @dp.message(Command("publicar"))
 async def cmd_publicar_no_canal(message: Message):
     """Publica qualquer foto ou vídeo com legenda opcional e o botão que redireciona para o bot"""
-    
+
     if message.from_user.id != SEU_TELEGRAM_ID:
         return
 
     teclado_canal = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="🎥 Faça uma vídeo chamada comigo", 
+            text="🎥 Faça uma vídeo chamada comigo",
             url=f"https://t.me/{USERNAME_DO_BOT}?start=videochamada"
         )]
     ])
@@ -177,20 +273,20 @@ async def processar_callbacks(callback: CallbackQuery):
     """Processa a seleção de qualquer plano, guarda o cliente e gera o Pix"""
     dados = callback.data
     plano_id = dados.replace("comprar_", "")
-    
+
     if plano_id in PLANOS:
         plano = PLANOS[plano_id]
         valor = plano["preco"]
         descricao = plano["descricao"]
         user = callback.from_user
-        
+
         salvar_cliente_db(
             user_id=user.id,
             username=user.username or "Sem username",
             nome=user.first_name,
             plano=plano['nome']
         )
-        
+
         try:
             teclado_admin = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Aprovar / Gerar Link Único", callback_data=f"aprovar_{user.id}")]
@@ -209,23 +305,23 @@ async def processar_callbacks(callback: CallbackQuery):
             )
         except Exception as err:
             print(f"Erro ao notificar admin: {err}")
-        
+
         await callback.message.answer(f"⏳ A gerar o Pix para: <b>{plano['nome']}</b> (R$ {valor:.2f})... Por favor, aguarde.", parse_mode="HTML")
-        
+
         cobranca = await gw.gerar_pix_cobranca(valor, descricao)
-        
+
         if cobranca.get("success"):
             pix_copia_cola = cobranca.get("pix_copia_cola")
             qr_base64 = cobranca.get("qr_code_base64")
-            
+
             if qr_base64:
                 try:
                     if "," in qr_base64:
                         qr_base64 = qr_base64.split(",")[1]
-                    
+
                     image_data = base64.b64decode(qr_base64)
                     photo_file = BufferedInputFile(image_data, filename="qrcode.png")
-                    
+
                     await callback.message.answer_photo(
                         photo=photo_file,
                         caption=f"✅ <b>Cobrança gerada com sucesso! ({plano['nome']})</b>\n\nEscaneie o QR Code acima ou use o código abaixo:",
@@ -233,7 +329,7 @@ async def processar_callbacks(callback: CallbackQuery):
                     )
                 except Exception as e:
                     print(f"Erro ao enviar foto do QR Code: {e}")
-            
+
             await callback.message.answer(
                 f"📋 <b>Pix Copia e Cola:</b>\n\n"
                 f"<code>{pix_copia_cola}</code>\n\n"
@@ -242,7 +338,7 @@ async def processar_callbacks(callback: CallbackQuery):
             )
         else:
             await callback.message.answer("❌ Ocorreu um erro ao comunicar com o gateway de pagamento. Tente novamente mais tarde.")
-            
+
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("aprovar_"))
@@ -250,16 +346,16 @@ async def aprovar_cliente(callback: CallbackQuery):
     """Gera um link de convite de uso único automaticamente e envia para o cliente aprovado"""
     if callback.from_user.id != SEU_TELEGRAM_ID:
         return
-        
+
     user_id_alvo = int(callback.data.replace("aprovar_", ""))
-    
+
     try:
         # Cria o link exclusivo que expira após o primeiro uso
         link_unico = await bot.create_chat_invite_link(
             chat_id=ID_CANAL_VIP,
             member_limit=1
         )
-        
+
         await bot.send_message(
             chat_id=user_id_alvo,
             text=(
@@ -270,11 +366,11 @@ async def aprovar_cliente(callback: CallbackQuery):
             ),
             parse_mode="HTML"
         )
-        
+
         await callback.message.edit_text(f"{callback.message.text}\n\n✅ <b>STATUS: Aprovado e link único enviado!</b>", parse_mode="HTML")
     except Exception as e:
         await callback.answer(f"Erro ao gerar link de convite: {e}", show_alert=True)
-        
+
     await callback.answer()
 
 async def main():
