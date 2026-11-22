@@ -2,12 +2,13 @@ import asyncio
 import base64
 import os
 import sqlite3
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile, FSInputFile
 from aiogram.filters import Command, CommandObject
 import gateway as gw
 
-# Insira o Token do seu bot do Telegram aqui
+# Insira o Token do seu bot do Telegram aqui (atualize se revogou no @BotFather)
 TELEGRAM_TOKEN = "8750562442:AAGGaAA9Q8yHh3AsPf0JrPQLUNGq7ez2zo8"
 
 # ID do seu Canal VIP privado
@@ -373,7 +374,23 @@ async def aprovar_cliente(callback: CallbackQuery):
 
     await callback.answer()
 
+# --- SERVIDOR WEB PARA MANTER A PORTA ABERTA NO RENDER ---
+async def saude(request):
+    return web.Response(text="Bot online!")
+
+async def iniciar_web():
+    app = web.Application()
+    app.router.add_get("/", saude)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    porta = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", porta)
+    await site.start()
+    print(f"Servidor web ativo na porta {porta}")
+
 async def main():
+    await iniciar_web()
+    await bot.delete_webhook(drop_pending_updates=True)
     print("Bot a iniciar...")
     await dp.start_polling(bot)
 
